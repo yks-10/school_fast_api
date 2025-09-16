@@ -5,6 +5,7 @@ from sqlalchemy import text
 from database import get_db, engine, Base
 from config import settings
 from routers import classrooms
+from models import ClassRoom, Student  # Import all models
 
 # Create database tables automatically (DEVELOPMENT ONLY)
 Base.metadata.create_all(bind=engine)
