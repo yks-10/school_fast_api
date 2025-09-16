@@ -2,6 +2,32 @@
 
 A FastAPI-based REST API for managing student classes with proper project structure following FastAPI best practices.
 
+## ⚡ Quick Start
+
+```bash
+# 1. Clone and setup
+git clone <repository-url>
+cd student
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+# 2. Configure environment
+cp .env.example .env  # Edit with your database settings
+
+# 3. Run (choose one method)
+
+# Development (auto-creates tables)
+uvicorn main_dev:app --reload
+
+# Production (uses migrations)
+alembic upgrade head
+uvicorn main:app --reload
+
+# 4. Access API
+# http://localhost:8000/docs
+```
+
 ## 🚀 Features
 
 - **Classroom Management**: Create, read, update, and delete classrooms
@@ -18,15 +44,33 @@ A FastAPI-based REST API for managing student classes with proper project struct
 student/
 ├── config.py          # Centralized configuration management
 ├── database.py        # Database connection and session management
-├── main.py           # FastAPI application and global endpoints
+├── main.py           # FastAPI application (production mode)
+├── main_dev.py       # FastAPI application (development mode)
 ├── models.py         # SQLAlchemy database models
 ├── schemas.py        # Pydantic schemas for data validation
 ├── routers/          # API route organization
 │   ├── __init__.py
 │   └── classrooms.py # Classroom-related API endpoints
+├── alembic/          # Database migration files
+│   ├── env.py        # Alembic environment configuration
+│   └── versions/     # Migration version files
+├── alembic.ini       # Alembic configuration
 ├── requirements.txt  # Python dependencies
 └── README.md        # Project documentation
 ```
+
+### **File Descriptions**
+
+| File | Purpose | Key Features |
+|------|---------|--------------|
+| `config.py` | Configuration management | Environment variables, database settings |
+| `database.py` | Database connection | SQLAlchemy engine, session management |
+| `main.py` | Production app | Uses Alembic migrations |
+| `main_dev.py` | Development app | Auto-creates tables |
+| `models.py` | Database models | SQLAlchemy ORM models |
+| `schemas.py` | Data validation | Pydantic request/response schemas |
+| `routers/classrooms.py` | API endpoints | CRUD operations for classrooms |
+| `alembic/` | Database migrations | Version-controlled schema changes |
 
 ## 🛠️ Installation
 
@@ -69,13 +113,18 @@ student/
 
 ## 🏃‍♂️ Running the Application
 
-### Development Mode
+### Development Mode (Automatic Table Creation)
 ```bash
-uvicorn main:app --reload
+# For quick development - tables created automatically
+uvicorn main_dev:app --reload
 ```
 
-### Production Mode
+### Production Mode (Alembic Migrations)
 ```bash
+# First, apply database migrations
+alembic upgrade head
+
+# Then run the application
 uvicorn main:app --host 0.0.0.0 --port 8000
 ```
 
@@ -147,6 +196,78 @@ curl -X DELETE "http://localhost:8000/api/v1/classrooms/1"
 | `class_name` | String | Not Null, Indexed | Name of the classroom |
 | `class_teacher` | String | Not Null | Teacher assigned to the classroom |
 
+## 🔄 Database Setup & Model Flow
+
+### **How Models Reflect to Database**
+
+The project supports two approaches for database table creation:
+
+#### **🚀 Production Flow (Recommended)**
+```mermaid
+graph TD
+    A[Define Model in models.py] --> B[Create Migration]
+    B --> C[Apply Migration: alembic upgrade head]
+    C --> D[Run App: uvicorn main:app]
+    D --> E[Tables exist in database]
+```
+
+**Steps:**
+1. **Define Model** in `models.py`
+2. **Create Migration**: `alembic revision --autogenerate -m "message"`
+3. **Apply Migration**: `alembic upgrade head`
+4. **Run App**: `uvicorn main:app --reload`
+
+#### **⚡ Development Flow (Quick Testing)**
+```mermaid
+graph TD
+    A[Define Model in models.py] --> B[Run App: uvicorn main_dev:app]
+    B --> C[Tables created automatically]
+```
+
+**Steps:**
+1. **Define Model** in `models.py`
+2. **Run App**: `uvicorn main_dev:app --reload` (auto-creates tables)
+
+### **Database Commands Reference**
+
+| Purpose | Command | What it does |
+|---------|---------|--------------|
+| **Development** | `uvicorn main_dev:app --reload` | Auto-creates tables |
+| **Production** | `alembic upgrade head` | Applies migrations |
+| **Production** | `uvicorn main:app --reload` | Runs app (tables already exist) |
+| **New Migration** | `alembic revision --autogenerate -m "message"` | Creates migration file |
+| **Check Status** | `alembic current` | Shows current migration |
+| **Rollback** | `alembic downgrade -1` | Rollback last migration |
+
+### **Migration Management**
+
+#### **Creating New Migrations**
+```bash
+# After modifying models.py, create a new migration
+alembic revision --autogenerate -m "Add new field to classroom"
+
+# Apply the migration
+alembic upgrade head
+```
+
+#### **Migration History**
+```bash
+# View migration history
+alembic history
+
+# Check current migration
+alembic current
+```
+
+#### **Rollback Migrations**
+```bash
+# Rollback one migration
+alembic downgrade -1
+
+# Rollback to specific migration
+alembic downgrade <revision_id>
+```
+
 ## 🔧 Configuration
 
 The application uses a centralized configuration system in `config.py`:
@@ -213,11 +334,77 @@ The API returns appropriate HTTP status codes:
 
 ## 🔄 Development Workflow
 
-1. **Add new models** in `models.py`
-2. **Create schemas** in `schemas.py` for validation
-3. **Implement routes** in `routers/` directory
-4. **Update main.py** to include new routers
-5. **Test endpoints** using the interactive docs at `/docs`
+### **Adding New Models**
+
+1. **Define Model** in `models.py`
+2. **Create Migration** (production):
+   ```bash
+   alembic revision --autogenerate -m "Add new model"
+   alembic upgrade head
+   ```
+3. **Create Schemas** in `schemas.py` for validation
+4. **Implement Routes** in `routers/` directory
+5. **Update main.py** to include new routers
+6. **Test Endpoints** using the interactive docs at `/docs`
+
+### **Model Development Best Practices**
+
+#### **✅ DO:**
+- Use descriptive model names (avoid Python keywords like `class`)
+- Add proper constraints and indexes
+- Use nullable=False for required fields
+- Create migrations for production changes
+
+#### **❌ DON'T:**
+- Mix automatic table creation with migrations
+- Use reserved Python keywords as model names
+- Skip validation schemas
+- Forget to test database changes
+
+## 🚨 Troubleshooting
+
+### **Common Issues**
+
+#### **Database Connection Errors**
+```bash
+# Check if PostgreSQL is running
+brew services list | grep postgresql
+
+# Start PostgreSQL
+brew services start postgresql
+```
+
+#### **Migration Conflicts**
+```bash
+# Check current migration status
+alembic current
+
+# View migration history
+alembic history
+
+# Resolve conflicts by editing migration files
+```
+
+#### **Table Already Exists Error**
+```bash
+# If using both methods, choose one:
+# Option 1: Use main_dev.py (automatic creation)
+uvicorn main_dev:app --reload
+
+# Option 2: Use main.py with migrations
+alembic upgrade head
+uvicorn main:app --reload
+```
+
+#### **Virtual Environment Issues**
+```bash
+# Create and activate virtual environment
+python3 -m venv .venv
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
 
 ## 📦 Dependencies
 

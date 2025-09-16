@@ -6,8 +6,8 @@ from database import get_db, engine, Base
 from config import settings
 from routers import classrooms
 
-# Database tables are managed by Alembic migrations
-# Run: alembic upgrade head
+# Create database tables automatically (DEVELOPMENT ONLY)
+Base.metadata.create_all(bind=engine)
 
 # Create FastAPI app
 app = FastAPI(
